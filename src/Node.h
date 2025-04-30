@@ -4,6 +4,7 @@
 #include <optional>
 #include <variant>
 
+#include "BPT.h"
 #include "disk/IO_manager.h"
 #include "src/utils/utils.h"
 #include "src/common.h"
@@ -35,11 +36,14 @@ namespace RFlowey {
     friend BPT;
 
   public:
+    BPTNode(page_id_t self_id,size_t current_size,value_type data[]):self_id_(self_id),current_size_(current_size) {
+      std::memcpy(data_,data,current_size*sizeof(value_type));
+    }
     /**
      * @brief binary search for the key
      * @return the last index < key
      */
-    index_type search(const Key &key) const {
+    [[nodiscard]] index_type search(const Key &key) const {
       index_type l = 0, r = current_size_;
       while (l < r) {
         index_type mid = l + (r - l) / 2;
@@ -52,7 +56,7 @@ namespace RFlowey {
       return l-1;
     }
 
-    value_type at(index_type pos) {
+    [[nodiscard]] value_type at(index_type pos) const {
       return data_[pos];
     }
 
@@ -84,18 +88,19 @@ namespace RFlowey {
       return current_size_>MERGE_T+1;
     }
 
-    std::unique_ptr<BPTNode> split(page_id_t page_id) {
+    PageRef<BPTNode> split(const PagePtr<BPTNode>& ptr) {
       std::unique_ptr<BPTNode> temp = std::make_unique<BPTNode>(*this);
 
       temp->prev_node_id_ = self_id_;
-      next_node_id_ = page_id;
-      temp->self_id_ = page_id;
+      next_node_id_ = ptr.page_id();
+      temp->self_id_ = ptr.page_id();
 
       int mid = current_size_/2;
       std::memmove(temp->data_,temp->data_+mid,current_size_-mid);
       temp->current_size_ = current_size_-mid;
       current_size_ = mid;
-      return temp;
+
+      return ptr.make_ref(std::move(temp));
     }
 
   };

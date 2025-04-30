@@ -30,41 +30,48 @@ namespace RFlowey {
     };
 
     struct FindResult {
-      pair<PageRef<LeafNode>,index_type> cur_pos;
-      sjtu::vector<pair<PageRef<InnerNode>,index_type>> parents;
+      std::pair<PageRef<LeafNode>,index_type> cur_pos;
+      sjtu::vector<std::pair<PageRef<InnerNode>,index_type>> parents;
       
     };
 
-    FindResult find_pos(const Key& key) {
+    enum class OperationType { FIND, INSERT, DELETE };
+    FindResult find_pos(const Key& key,OperationType type) {
       hash_t h = hash(key);
-      sjtu::vector<pair<PageRef<InnerNode>,index_type>> parents;
+      sjtu::vector<std::pair<PageRef<InnerNode>,index_type>> parents;
       PageRef<InnerNode> cur = root_.get_ref();
       for(int i=0;i<layer;++i) {
         index_type index = cur->search(h);
         page_id_t next = cur->at(index).second;
-        if(cur->is_safe()) {
-          parents.clear();
-          parents.emplace_back(std::move(cur),index);
+        if(!(type==OperationType::FIND)) {
+          if((type==OperationType::INSERT&&cur->is_upper_safe())||(type==OperationType::DELETE&&cur->is_lower_safe())) {
+            parents.clear();
+            parents.emplace_back(std::move(cur),index);
+          }
         }
         cur = std::move(PagePtr<InnerNode>{next,&manager_}.get_ref());
       }
       index_type index = cur->search(h);
       page_id_t next = cur->at(index).second;
       auto temp = PagePtr<LeafNode>{next,&manager_}.get_ref();
-      if(temp->is_safe()) {
-        parents.clear();
+
+      if(!(type==OperationType::FIND)) {
+        if((type==OperationType::INSERT&&temp->is_upper_safe())||(type==OperationType::DELETE&&temp->is_lower_safe())) {
+          parents.clear();
+        }
       }
+
       index_type id = temp->search(h);
       return {{std::move(temp),id},parents};
     }
 
   public:
-    BPT(std::string& file_name):manager_(file_name),root_(0,&manager_) {
+    explicit BPT(std::string& file_name):manager_(file_name),root_(0,&manager_) {
       auto cfg = PagePtr<BPT_config>{0,&manager_}.get_ref();
       root_=PagePtr<InnerNode>{cfg->root_id,&manager_};
     }
     sjtu::vector<Value> find(const Key& key) {
-      auto result = find_pos(key);
+      auto result = find_pos(key,OperationType::FIND);
       auto leaf = std::move(result.cur_pos.first);
       auto index = result.cur_pos.second;
       sjtu::vector<Value> temp;
@@ -84,32 +91,28 @@ namespace RFlowey {
     }
 
     void insert(const Key& key,const Value& value) {
-      auto [pos,parents] = find_pos(key);
+      auto [pos,parents] = find_pos(key,OperationType::INSERT);
       pos.first->insert_at(pos.second,{hash(key),value});
       if(parents.empty()) {
         return;
       }
       //split on the route
-      auto page_id = manager_.NewPage();
-      auto page_ref = PagePtr<LeafNode>{page_id,&manager_}.make_ref(pos.first->split(page_id));
+      auto page_ref = pos.first->split(allocate<LeafNode>(&manager_));
+      auto page_id = page_ref->self_id_;
       auto first_key = page_ref->data_[0].first;
       for(auto& [parent_node,index]:parents) {
         parent_node->insert_at(index,{first_key,page_id});
         if(parent_node->current_size_>=LeafNode::SPLIT_T) {
-          page_id = manager_.NewPage();
-          page_ref = PagePtr<LeafNode>{page_id,&manager_}.make_ref(parent_node->split(page_id));
-          first_key = page_ref->data_[0].first;
-        } else {
+          auto inner_ref = parent_node->split(allocate<InnerNode>(&manager_));
+          page_id = inner_ref->self_id_;
+          first_key = inner_ref->data_[0].first;
+        } else {//最上面的不应该需要Split,除非是根节点
            return;
         }
       }
-      //split root
-      page_id = manager_.NewPage();
-      page_ref = PagePtr<LeafNode>{page_id,&manager_}.make_ref(root_.get_ref()->split(page_id));
-      first_key = page_ref->data_[0].first;
-
-      auto new_root_id = manager_.NewPage();
-      auto new_root = std::make_unique<LeafNode>();
+      auto split_node = root_.get_ref()->split(allocate<InnerNode>(&manager_));
+      auto new_ptr = allocate<InnerNode>(&manager_);
+      auto new_root = new_ptr.make_ref(std::make_unique<InnerNode>(InnerNode{new_ptr.page_id(),2,{{1,root_.page_id()},{split_node->data_[0],split_node->self_id_}}}));
 
     }
 

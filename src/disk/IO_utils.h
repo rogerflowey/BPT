@@ -27,31 +27,56 @@ namespace RFlowey {
   };
   bool open(std::fstream& file,std::string& filename);
 
+
+  //不要问为啥不分到.cpp,问就是模板类
   template<typename T>
   //代表“解引用”后的内存中的对象，析构时会同时析构并重新序列化管理的对象
   class PageRef {
     std::shared_ptr<Page> page_;
     std::unique_ptr<T> t_ptr_;
+    bool is_dirty = false;
+    bool is_valid = true;
   public:
     PageRef(std::shared_ptr<Page> page,std::unique_ptr<T> t_ptr):page_(std::move(page)),t_ptr_(std::move(t_ptr)){};
-    PageRef(PageRef&& ref) noexcept :page_(std::move(ref.page_)),t_ptr_(std::move(ref.t_ptr_)) {};
+    PageRef(PageRef&& ref) noexcept :page_(std::move(ref.page_)),t_ptr_(std::move(ref.t_ptr_)) {
+      ref.is_valid = false;
+    };
 
     PageRef& operator=(PageRef&& ref)  noexcept {
       if(this==&ref) {
         return *this;
       }
-      Serialize(page_->get_data(),*t_ptr_);
+      Drop();
+      ref.is_valid = false;
       page_ = std::move(ref.page_);
       t_ptr_ = std::move(ref.t_ptr_);
       return *this;
     }
     ~PageRef() {
-      Serialize(page_->get_data(),*t_ptr_);
+      Drop();
     }
-    T* operator->() const {
+    void Drop() {
+      if(!is_valid) {
+        return;
+      }
+      if(is_dirty) {
+        Serialize(page_->get_data(),*t_ptr_);
+      }
+      is_valid = false;
+
+    }
+    T* operator->() {
+      is_dirty = true;
       return t_ptr_.get();
     }
-    T& operator*() const {
+    const T* operator->() const{
+      return t_ptr_.get();
+    }
+    T& operator*() {
+      is_dirty = true;
+      return *t_ptr_;
+    }
+    const T& operator*() const{
       return *t_ptr_;
     }
   };
@@ -63,6 +88,10 @@ namespace RFlowey {
 
 
     explicit PagePtr(page_id_t page_id,IOManager* manager):page_id_(page_id),manager_(manager){}
+
+    [[nodiscard]] page_id_t page_id() const {
+      return page_id_;
+    }
 
     [[nodiscard]] PageRef<T> get_ref() const {
       std::shared_ptr<Page> page = manager_->ReadPage(page_id_);
@@ -86,7 +115,7 @@ namespace RFlowey {
   /**
    * @return true if new
    */
-  bool open(std::fstream& file,std::string& filename) {
+  inline bool open(std::fstream& file,std::string& filename) {
     file.open(filename, std::ios::in | std::ios::out | std::ios::binary);
     if(!file){
       file.clear();
