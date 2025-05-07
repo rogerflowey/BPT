@@ -15,8 +15,15 @@ namespace RFlowey {
     return data_;
   }
   void Page::flush() {
-    manager_->WritePage(*this,page_id_);
+    if(manager_) {
+      manager_->WritePage(*this,page_id_);
+    }
   }
+
+
+
+
+
 
 }
 

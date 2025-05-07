@@ -4,15 +4,14 @@
 #include <optional>
 #include <variant>
 
-#include "BPT.h"
 #include "disk/IO_manager.h"
+#include "disk/IO_utils.h"
 #include "src/utils/utils.h"
 #include "src/common.h"
 #include "disk/serialize.h"
 
 
 namespace RFlowey {
-  class BPT;
 
   enum PAGETYPE:char {
     Leaf, Inner
@@ -20,25 +19,27 @@ namespace RFlowey {
 
   template<typename Key, typename Value,PAGETYPE type>
   class BPTNode {
-    using value_type = std::pair<Key,Value>;
+  public:
+    using value_type = pair<Key,Value>;
+
     static constexpr int SIZEMAX = (PAGESIZE - 128) / sizeof(value_type) - 1;
     static constexpr int SPLIT_T = SPLIT_RATE*SIZEMAX;
     static constexpr int MERGE_T = MERGE_RATE*SIZEMAX;
-    static_assert(SIZEMAX>=10);
+    static_assert(SIZEMAX>=8);
 
-    page_id_t self_id_;
-    page_id_t prev_node_id_;
-    page_id_t next_node_id_;
-    size_t current_size_;
+    page_id_t self_id_=INVALID_PAGE_ID;
+    page_id_t prev_node_id_=INVALID_PAGE_ID;
+    page_id_t next_node_id_=INVALID_PAGE_ID;
+    size_t current_size_=0;
 
     value_type data_[SIZEMAX];
 
-    friend BPT;
 
   public:
     BPTNode(page_id_t self_id,size_t current_size,value_type data[]):self_id_(self_id),current_size_(current_size) {
       std::memcpy(data_,data,current_size*sizeof(value_type));
     }
+    BPTNode(page_id_t self_id) : self_id_(self_id), current_size_(0) {}
     /**
      * @brief binary search for the key
      * @return the last index < key
@@ -53,27 +54,63 @@ namespace RFlowey {
           r = mid;
         }
       }
+      if(l==0) {
+        return INVALID_PAGE_ID;//this is only for readability since INVALID_PAGE_ID is -1;
+      }
       return l-1;
     }
 
     [[nodiscard]] value_type at(index_type pos) const {
+#ifdef BPT_TEST
+      if (pos >= current_size_) {
+        throw std::out_of_range("BPTNode::at: position out of bounds");
+      }
+#endif
       return data_[pos];
+    }
+    Key& head(index_type pos) {
+#ifdef BPT_TEST
+      if (pos >= current_size_) {
+        throw std::out_of_range("BPTNode::head: position out of bounds");
+      }
+#endif
+      return data_[pos].first;
+    }
+    Key get_first() {
+#ifdef BPT_TEST
+      if (current_size_ == 0) {
+        throw std::logic_error("BPTNode::get_first: node is empty");
+      }
+#endif
+      return data_[0].first;
     }
 
     /**
-     * @brief insert key,value after pos
-     * @return need
+     * @brief insert key,value after pos. pos should be at least 0;
      */
-    bool insert_at(index_type pos,const value_type& value) {
-      std::memmove(data_+pos+1,data_+pos,sizeof(value_type)*(current_size_-pos-1));
+    void insert_at(index_type pos,const value_type& value) {
+#ifdef BPT_TEST
+      if (current_size_ >= SIZEMAX) {
+        throw std::overflow_error("BPTNode::insert_at: node is full");
+      }
+#endif
+      std::memmove(data_+pos+2,data_+pos+1,sizeof(value_type)*(current_size_-(pos+1)));
       data_[pos+1] = value;
       current_size_++;
     }
 
     /**
-     * @brief erase the data at pos
+     * @brief erase the data at pos. pos should be at least 0;
      */
-    bool erase(index_type pos) {
+    void erase(index_type pos) {
+#ifdef BPT_TEST
+      if (current_size_ == 0) {
+        throw std::out_of_range("BPTNode::erase: position out of bounds");
+      }
+      if (pos >= current_size_) {
+        throw std::out_of_range("BPTNode::erase: position out of bounds");
+      }
+#endif
       std::memmove(data_+pos,data_+pos+1,sizeof(value_type)*(current_size_-pos));
       current_size_--;
     }
@@ -96,11 +133,15 @@ namespace RFlowey {
       temp->self_id_ = ptr.page_id();
 
       int mid = current_size_/2;
-      std::memmove(temp->data_,temp->data_+mid,current_size_-mid);
+      std::memmove(temp->data_,temp->data_+mid,(current_size_-mid)*sizeof(value_type));
       temp->current_size_ = current_size_-mid;
       current_size_ = mid;
 
       return ptr.make_ref(std::move(temp));
+    }
+
+    [[nodiscard]] page_id_t get_self() const {
+      return self_id_;
     }
 
   };

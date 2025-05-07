@@ -410,6 +410,12 @@ namespace sjtu {
       }
       return data[_size - 1];
     }
+    T &back() {
+      if (_size == 0) {
+        throw container_is_empty();
+      }
+      return data[_size - 1];
+    }
 
     /**
      * returns an iterator to the beginning.
