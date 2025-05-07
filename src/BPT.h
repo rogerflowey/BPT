@@ -47,33 +47,30 @@ namespace RFlowey {
       assert(layer >= 0 && "find_pos called with invalid layer");
 #endif
       sjtu::vector<pair<PageRef<InnerNode>, index_type> > parents;
-      PageRef<InnerNode> cur = root_.get_ref();
+      page_id_t next = root_.page_id();
+      index_type index;
 
-#ifdef BPT_TEST
-      assert(cur->self_id_ == root_.page_id());
-      assert(cur->current_size_ > 0 && "Root node should not be empty unless tree is just one leaf (layer 0 special case)");
-#endif
-      for (int i = 0; i < layer; ++i) {
+      for (int i = 0; i <= layer; ++i) {
+        PageRef<InnerNode> cur = std::move(PagePtr<InnerNode>{next, &manager_}.get_ref());
 #ifdef BPT_TEST
         assert(cur->current_size_ > 0 && "Inner node on path is empty");
 #endif
-        index_type index = cur->search(key);
+        index = cur->search(key);
 #ifdef BPT_TEST
         assert(index != static_cast<index_type>(INVALID_PAGE_ID) && \
                "BPTNode::search returned INVALID_PAGE_ID in an InnerNode");
         assert(index < cur->current_size_ && \
                "Search index out of bounds in inner node after valid return.");
 #endif
-        page_id_t next = cur->at(index).second;
-        if ((type == OperationType::INSERT && cur->is_upper_safe()) ||
-          (type == OperationType::DELETE && cur->is_lower_safe())) {
-          parents.clear();
+        next = cur->at(index).second;
+        if(type!=OperationType::FIND) {
+          if ((type == OperationType::INSERT && cur->is_upper_safe()) ||
+            (type == OperationType::DELETE && cur->is_lower_safe())) {
+            parents.clear();
+            }
           parents.emplace_back(std::move(cur), index);
         }
-        cur = std::move(PagePtr<InnerNode>{next, &manager_}.get_ref());
       }
-      index_type index = cur->search(key);
-      page_id_t next = cur->at(index).second;
       auto temp = PagePtr<LeafNode>{next, &manager_}.get_ref();
       if ((type == OperationType::INSERT && temp->is_upper_safe()) ||
         (type == OperationType::DELETE && temp->is_lower_safe())) {
@@ -172,7 +169,7 @@ namespace RFlowey {
       auto leaf = std::move(result.cur_pos.first);
       auto index = result.cur_pos.second;
       sjtu::vector<Value> temp;
-      while (true) {
+      while (index<leaf->current_size_) {
         if (leaf->at(index).first >= upper) {
           break;
         }
@@ -181,7 +178,7 @@ namespace RFlowey {
           temp.push_back(value.second);
         }
         ++index;
-        if (index == LeafNode::SIZEMAX && leaf->next_node_id_ != INVALID_PAGE_ID) {
+        if (index == leaf->current_size_ && leaf->next_node_id_ != INVALID_PAGE_ID) {
           index = 0;
           leaf = PagePtr<LeafNode>{leaf->next_node_id_, &manager_}.get_ref();
         }
@@ -193,6 +190,9 @@ namespace RFlowey {
       key_type inner_key = {key_hash(key), std::hash<Value>{}(value)};
       auto [pos,parents] = find_pos(inner_key, OperationType::INSERT);
       pos.first->insert_at(pos.second, {{key_hash(key),value_hash(value)}, {key, value}});
+#ifdef BPT_TEST
+      pos.first->current_size_<=LeafNode::SPLIT_T;
+#endif
       if (parents.empty()) {
         return;
       }
@@ -211,18 +211,14 @@ namespace RFlowey {
           first_key = inner_ref->get_first();
         } else {
 #ifdef BPT_TEST
-          assert(root_.page_id()!=parent_node->get_self());
 #endif
           //最上面的不应该需要Split,除非是根节点
           return;
         }
       }
-#ifdef BPT_TEST
-      assert(root_.get_ref()->current_size_>=InnerNode::SPLIT_T);
-#endif
-      auto split_node = root_.get_ref()->split(allocate<InnerNode>(&manager_));
+      //root分裂了，增加新root
       auto new_ptr = allocate<InnerNode>(&manager_);
-      InnerNode::value_type temp_data[2] = {{{0,0}, root_.page_id()}, {split_node->get_first(), split_node->get_self()}};
+      InnerNode::value_type temp_data[2] = {{{0,0}, root_.page_id()}, {first_key,page_id}};
       auto new_root = new_ptr.make_ref(InnerNode{new_ptr.page_id(), 2, temp_data});
       root_ = new_ptr;
       ++layer;

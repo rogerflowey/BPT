@@ -21,8 +21,11 @@ namespace RFlowey {
   class BPTNode {
   public:
     using value_type = pair<Key,Value>;
-
+#ifndef BPT_SMALL_SIZE
     static constexpr int SIZEMAX = (PAGESIZE - 128) / sizeof(value_type) - 1;
+#else
+    static constexpr int SIZEMAX = 8;
+#endif
     static constexpr int SPLIT_T = SPLIT_RATE*SIZEMAX;
     static constexpr int MERGE_T = MERGE_RATE*SIZEMAX;
     static_assert(SIZEMAX>=8);
@@ -126,6 +129,9 @@ namespace RFlowey {
     }
 
     PageRef<BPTNode> split(const PagePtr<BPTNode>& ptr) {
+#ifdef BPT_TEST
+      assert(current_size_>=SPLIT_T);
+#endif
       std::unique_ptr<BPTNode> temp = std::make_unique<BPTNode>(*this);
 
       temp->prev_node_id_ = self_id_;

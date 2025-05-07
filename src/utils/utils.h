@@ -135,10 +135,10 @@ constexpr bool operator>=(const pair<T1, T2>& lhs, const pair<T1, T2>& rhs) {
         [[nodiscard]] std::string get_str() const{
             return std::string(a, length());
         }
-        [[nodiscard]] const char* data() const noexcept {
+        [[nodiscard]] const char* c_str() const noexcept {
             return a;
         }
-        char* data() noexcept {
+        char* c_str() noexcept {
             return a;
         }
 
