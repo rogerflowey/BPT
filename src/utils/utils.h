@@ -129,6 +129,9 @@ constexpr bool operator>=(const pair<T1, T2>& lhs, const pair<T1, T2>& rhs) {
         [[nodiscard]] bool empty() const noexcept {
             return a[0] == '\0';
         }
+
+
+
         static constexpr size_t capacity() noexcept {
             return N;
         }
@@ -139,6 +142,12 @@ constexpr bool operator>=(const pair<T1, T2>& lhs, const pair<T1, T2>& rhs) {
             return a;
         }
         char* c_str() noexcept {
+            return a;
+        }
+        [[nodiscard]] const char* data() const noexcept {
+            return a;
+        }
+        char* data() noexcept {
             return a;
         }
 

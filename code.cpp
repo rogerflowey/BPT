@@ -1,11 +1,24 @@
 #include <iostream> // For std::cin, std::cout, std::cerr
 #include <string>   // For std::string
-#include <vector>   // For std::vector (though BPT uses sjtu::vector internally)
 #include <cassert>
-#include <functional> // Potentially needed for std::hash usage within BPT header
 
 // Include the B+ Tree header
 #include "src/BPT.h"
+
+#define BPT_TEST
+
+struct String64Hasher {
+  RFlowey::hash_t operator()(const RFlowey::string<64>& s) const {
+    return hash(s);
+  }
+};
+
+struct IntHasher {
+  RFlowey::hash_t operator()(const int& v) const {
+    return (std::hash<int>{}(v));
+  }
+};
+
 
 bool TEST;
 
@@ -18,9 +31,8 @@ int main() {
   }
 
   std::string bpt_data_file = "No2697.dat";
-  //RFlowey::BPT<std::string, int> bpt(bpt_data_file);
-  RFlowey::BPT bpt(bpt_data_file);
-
+  //std::remove(bpt_data_file.c_str());
+  RFlowey::BPT<RFlowey::string<64>, int,String64Hasher,IntHasher> bpt(bpt_data_file);
 
   int n;
   if (!(std::cin >> n)) {
@@ -50,7 +62,7 @@ int main() {
            std::cerr << "Error reading delete arguments." << std::endl;
            break;
        }
-       std::cerr << "Warning: 'delete' command received, but BPT::erase is not implemented in provided code." << std::endl;
+       bpt.erase(index_str,value);
     } else if (command == "find") {
       std::string index_str;
        if (!(std::cin >> index_str)) {
@@ -77,6 +89,7 @@ int main() {
       std::string dummy;
       std::getline(std::cin, dummy);
     }
+    //bpt.print_tree_structure();
   }
   return 0;
 }

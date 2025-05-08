@@ -24,7 +24,7 @@ namespace RFlowey {
     ValueHash value_hash{};
 
 
-    MemoryManager manager_;
+    SimpleDiskManager manager_;
     PagePtr<InnerNode> root_;
     int layer = 0;
 
@@ -78,9 +78,7 @@ namespace RFlowey {
       }
 
       index_type id = temp->search(key);
-#ifdef BPT_TEST
-      assert(id != static_cast<index_type>(INVALID_PAGE_ID));
-#endif
+
       return {{std::move(temp), id}, std::move(parents)};
     }
 
@@ -151,7 +149,7 @@ namespace RFlowey {
 #endif
       if (root_.page_id() != INVALID_PAGE_ID && root_.page_id() != 0) { // Only save if root seems valid
         BPT_config cfg_to_save = {true, layer, root_.page_id()};
-        PagePtr<BPT_config>{0, &manager_}.make_ref(std::move(cfg_to_save)); // Use std::move for unique_ptr if make_ref takes it
+        PagePtr<BPT_config>{1, &manager_}.make_ref(std::move(cfg_to_save)); // Use std::move for unique_ptr if make_ref takes it
       } else {
 #ifdef BPT_TEST
         std::cerr << "BPT Destructor: Root is invalid, not saving config to page 0." << std::endl;
@@ -168,6 +166,9 @@ namespace RFlowey {
       auto result = find_pos(inner_key, OperationType::FIND);
       auto leaf = std::move(result.cur_pos.first);
       auto index = result.cur_pos.second;
+      if(index==INVALID_PAGE_ID) {
+        index=0;
+      }
       sjtu::vector<Value> temp;
       while (index<leaf->current_size_) {
         if (leaf->at(index).first >= upper) {
@@ -187,7 +188,7 @@ namespace RFlowey {
     }
 
     void insert(const Key &key, const Value &value) {
-      key_type inner_key = {key_hash(key), std::hash<Value>{}(value)};
+      key_type inner_key = {key_hash(key), value_hash(value)};
       auto [pos,parents] = find_pos(inner_key, OperationType::INSERT);
       pos.first->insert_at(pos.second, {{key_hash(key),value_hash(value)}, {key, value}});
 #ifdef BPT_TEST
@@ -211,6 +212,7 @@ namespace RFlowey {
           first_key = inner_ref->get_first();
         } else {
 #ifdef BPT_TEST
+          assert(parents.empty());
 #endif
           //最上面的不应该需要Split,除非是根节点
           return;
@@ -223,5 +225,112 @@ namespace RFlowey {
       root_ = new_ptr;
       ++layer;
     }
+
+
+    bool erase(const Key& key, const Value& value) {
+      key_type inner_key = {key_hash(key), value_hash(value)};
+      auto [pos,parents] = find_pos(inner_key, OperationType::DELETE);
+      if(pos.second>=pos.first->current_size_||pos.first->at(pos.second).first!=inner_key) {
+        return false;
+      }
+      pos.first->erase(pos.second);
+      if(parents.empty()) {
+        return true;
+      }
+      if(!pos.first->merge(&manager_)) {
+        return true;
+      }
+      while (!parents.empty()) {
+        auto parent_node = std::move(parents.back().first);
+        auto index = std::move(parents.back().second);
+        parents.pop_back();
+        parent_node->erase(index);
+        if (parent_node->current_size_<=InnerNode::MERGE_T&&parent_node->prev_node_id_!=INVALID_PAGE_ID) {
+          if(!parent_node->merge(&manager_)) {
+            break;
+          }
+        }else {
+          break;
+        }
+      }
+      auto root = root_.get_ref();
+      if(root->current_size_==1&&layer>0) {
+        root_ = PagePtr<InnerNode>{root->data_[0].second,&manager_};
+        --layer;
+        manager_.DeletePage(root->get_self());
+      }
+      return true;
+    }
+
+    public: // Add to public section of BPT
+
+  void print_tree_structure() {
+    std::cout << "\n====== B+Tree Structure ======" << std::endl;
+    if (root_.page_id() == INVALID_PAGE_ID || root_.page_id() == 0) {
+      std::cout << "Tree is empty or root is invalid." << std::endl;
+      return;
+    }
+    std::cout << "Layer: " << layer << std::endl;
+    std::cout << "Root Page ID: " << root_.page_id() << std::endl;
+    print_node_recursive(root_.page_id(), 0, true); // true for is_inner_node_root
+    std::cout << "==============================\n" << std::endl;
+  }
+
+private: // Add to private section of BPT
+
+  // Recursive helper to print nodes
+  void print_node_recursive(page_id_t page_id, int current_depth, bool is_inner_node) {
+    if (page_id == INVALID_PAGE_ID) {
+      std::cout << std::string(current_depth * 4, ' ') << "INVALID_PAGE_ID" << std::endl;
+      return;
+    }
+
+    std::string indent = std::string(current_depth * 4, ' ');
+
+    if (is_inner_node) {
+      try {
+        PageRef<InnerNode> node_ref = PagePtr<InnerNode>{page_id, &manager_}.get_ref();
+        std::cout << indent << "InnerNode (ID: " << node_ref->self_id_
+                  << ", Size: " << node_ref->current_size_
+                  << ", Prev: " << node_ref->prev_node_id_
+                  << ", Next: " << node_ref->next_node_id_ << "):" << std::endl;
+
+        for (size_t i = 0; i < node_ref->current_size_; ++i) {
+          auto entry = node_ref->at(i); // pair<key_type, page_id_t>
+          std::cout << indent << "  [" << i << "] Key: (" << entry.first.first << "," << entry.first.second << ")"
+                    << " -> Child PID: " << entry.second << std::endl;
+          // Recursively print child, unless it's the last level before leaves
+          if (current_depth < layer) { // Only recurse if this inner node is not pointing to leaves
+             print_node_recursive(entry.second, current_depth + 1, true);
+          } else { // This inner node points to leaves
+             print_node_recursive(entry.second, current_depth + 1, false);
+          }
+        }
+      } catch (const std::exception& e) {
+          std::cerr << indent << "Error accessing InnerNode ID " << page_id << ": " << e.what() << std::endl;
+      }
+    } else { // It's a LeafNode
+      try {
+        PageRef<LeafNode> node_ref = PagePtr<LeafNode>{page_id, &manager_}.get_ref();
+        std::cout << indent << "LeafNode (ID: " << node_ref->self_id_
+                  << ", Size: " << node_ref->current_size_
+                  << ", Prev: " << node_ref->prev_node_id_
+                  << ", Next: " << node_ref->next_node_id_ << "):" << std::endl;
+
+        for (size_t i = 0; i < node_ref->current_size_; ++i) {
+          auto entry = node_ref->at(i); // pair<key_type, value_type (pair<Key,Value>)>
+          // Assuming Key and Value are printable or have a .c_str() or similar
+          // For simplicity, just printing the key_type for now.
+          // You'll want to customize this to print your actual Key and Value if possible.
+          std::cout << indent << "  [" << i << "] KeyType: (" << entry.first.first << "," << entry.first.second << ")"
+                    << " -> Value: (KeyHash: " << key_hash(entry.second.first) << ", ValHash: " << value_hash(entry.second.second)
+                    << ", OrigKey: " << entry.second.first.c_str() /* Adjust if Key not string */
+                    << ", OrigVal: " << entry.second.second /* Adjust if Value not int */ << ")" << std::endl;
+        }
+      } catch (const std::exception& e) {
+          std::cerr << indent << "Error accessing LeafNode ID " << page_id << ": " << e.what() << std::endl;
+      }
+    }
+  }
   };
 }

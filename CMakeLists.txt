@@ -30,3 +30,9 @@ add_executable(BPT_find_insert_easy_test
         src/disk/IO_manager.cpp
         src/disk/IO_utils.cpp
 )
+
+add_executable(BPT_erase_test
+        test/BPT_erase_test.cpp
+        src/disk/IO_manager.cpp
+        src/disk/IO_utils.cpp
+)

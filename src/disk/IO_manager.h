@@ -43,6 +43,7 @@ namespace RFlowey {
   public:
     bool is_new = true;
     explicit SimpleDiskManager(const std::string& file_name);
+    ~SimpleDiskManager() override;
 
     page_id_t NewPage() override;
     void DeletePage(page_id_t page_id) override;
