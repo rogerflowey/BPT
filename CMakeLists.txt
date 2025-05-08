@@ -10,7 +10,6 @@ add_executable(code
         code.cpp
         src/disk/IO_manager.cpp
         src/disk/IO_utils.cpp
-        src/bpt.h
 )
 
 add_executable(node_test
