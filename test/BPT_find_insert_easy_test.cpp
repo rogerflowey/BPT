@@ -514,11 +514,11 @@ void test_bpt_comprehensive_small(const std::string& db_filename_prefix) {
     std::map<RFlowey::string<64>, std::vector<int>> reference_map;
     std::set<RFlowey::string<64>> existing_keys_set; // To quickly pick keys for erase/find
 
-    std::mt19937 rng(42); // Random number generator
+    std::mt19937 rng(114); // Random number generator
 
-    const int num_initial_inserts = 30; // Enough to cause some splits
-    const int num_operations = 200;    // Mix of inserts, erases, finds
-    const int max_val_per_key = 5;
+    const int num_initial_inserts = 150; // Enough to cause some splits
+    const int num_operations = 1000;    // Mix of inserts, erases, finds
+    const int max_val_per_key = 10;
 
     std::cout << "--- Comprehensive Test: Initial Population ---" << std::endl;
     for (int i = 0; i < num_initial_inserts; ++i) {
@@ -620,6 +620,8 @@ void test_bpt_comprehensive_small(const std::string& db_filename_prefix) {
 
 
 int main() {
+    freopen("test.log","w",stdout);
+
     const std::string base_db_filename = "bpt_small";
 
     test_bpt_insert_find_split_small(base_db_filename + "_core_persistence.dat");

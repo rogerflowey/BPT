@@ -56,9 +56,10 @@ namespace RFlowey {
         assert(cur->current_size_ > 0 && "Inner node on path is empty");
 #endif
         index = cur->search(key);
+        if(index==INVALID_PAGE_ID) {
+          index=0;
+        }
 #ifdef BPT_TEST
-        assert(index != static_cast<index_type>(INVALID_PAGE_ID) && \
-               "BPTNode::search returned INVALID_PAGE_ID in an InnerNode");
         assert(index < cur->current_size_ && \
                "Search index out of bounds in inner node after valid return.");
 #endif
@@ -237,7 +238,7 @@ namespace RFlowey {
       if(parents.empty()) {
         return true;
       }
-      if(!pos.first->merge(&manager_)) {
+      if(parents.back().second==0||!pos.first->merge(&manager_)) {
         return true;
       }
       while (!parents.empty()) {
@@ -246,7 +247,7 @@ namespace RFlowey {
         parents.pop_back();
         parent_node->erase(index);
         if (parent_node->current_size_<=InnerNode::MERGE_T&&parent_node->prev_node_id_!=INVALID_PAGE_ID) {
-          if(!parent_node->merge(&manager_)) {
+          if(parents.back().second==0||!parent_node->merge(&manager_)) {
             break;
           }
         }else {
