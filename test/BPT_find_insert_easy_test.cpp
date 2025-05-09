@@ -514,7 +514,7 @@ void test_bpt_comprehensive_small(const std::string& db_filename_prefix) {
     std::map<RFlowey::string<64>, std::vector<int>> reference_map;
     std::set<RFlowey::string<64>> existing_keys_set; // To quickly pick keys for erase/find
 
-    std::mt19937 rng(std::random_device{}()); // Random number generator
+    std::mt19937 rng(42); // Random number generator
 
     const int num_initial_inserts = 30; // Enough to cause some splits
     const int num_operations = 200;    // Mix of inserts, erases, finds
@@ -595,6 +595,7 @@ void test_bpt_comprehensive_small(const std::string& db_filename_prefix) {
 
             assert(found_vals_std == expected_vals && "Find operation mismatch");
         }
+        bpt.print_tree_structure();
 
         if (i % (num_operations / 10) == 0 && i > 0) { // Verify periodically
             verify_bpt_content(bpt, reference_map, "After " + std::to_string(i) + " mixed operations");

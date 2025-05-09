@@ -135,8 +135,13 @@ namespace RFlowey {
       std::unique_ptr<BPTNode> temp = std::make_unique<BPTNode>(*this);
 
       temp->prev_node_id_ = self_id_;
+      temp->next_node_id_ = next_node_id_;
+      if (next_node_id_ != INVALID_PAGE_ID) {
+        PagePtr<BPTNode>{next_node_id_,ptr.manager_}.get_ref()->prev_node_id_ = ptr.page_id();
+      }
       next_node_id_ = ptr.page_id();
       temp->self_id_ = ptr.page_id();
+
 
       int mid = current_size_/2;
       std::memmove(temp->data_,temp->data_+mid,(current_size_-mid)*sizeof(value_type));

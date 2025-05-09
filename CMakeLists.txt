@@ -35,3 +35,9 @@ add_executable(BPT_erase_test
         src/disk/IO_manager.cpp
         src/disk/IO_utils.cpp
 )
+
+add_executable(standard_test
+        test/standard_test.cpp
+        src/disk/IO_manager.cpp
+        src/disk/IO_utils.cpp
+)

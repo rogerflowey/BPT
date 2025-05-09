@@ -115,10 +115,9 @@ namespace RFlowey {
   };
   template<typename T>
   class PagePtr {
+  public:
     IOManager* manager_;
     page_id_t page_id_;
-  public:
-
 
     explicit PagePtr(page_id_t page_id,IOManager* manager):page_id_(page_id),manager_(manager){}
 
