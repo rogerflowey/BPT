@@ -406,16 +406,11 @@ int main() {
     const std::string base_db_filename = "bpt_small_non_random";
 
     // Run Test 1: Big Erase
-    //test_bpt_big_erase(base_db_filename);
+    test_bpt_big_erase(base_db_filename);
 
     // Run Test 2: Erase and Insert Mixed
     test_bpt_erase_insert_mixed_verbose(base_db_filename);
 
-    std::cout << "\nAll non-random BPT tests completed successfully." << std::endl;
 
-    // Final cleanup
-    std::cout << "--- Main: Cleaning up database files ---" << std::endl;
-    std::remove((base_db_filename + "_big_erase.dat").c_str());
-    std::remove((base_db_filename + "_mixed_ops.dat").c_str());
     return 0;
 }

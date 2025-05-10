@@ -171,7 +171,15 @@ namespace RFlowey {
         index=0;
       }
       sjtu::vector<Value> temp;
-      while (index<leaf->current_size_) {
+      while (true) {
+        if (index >= leaf->current_size_) {
+          if(leaf->next_node_id_ != INVALID_PAGE_ID) {
+            index = 0;
+            leaf = PagePtr<LeafNode>{leaf->next_node_id_, &manager_}.get_ref();
+          } else {
+            break;
+          }
+        }
         if (leaf->at(index).first >= upper) {
           break;
         }
@@ -180,10 +188,6 @@ namespace RFlowey {
           temp.push_back(value.second);
         }
         ++index;
-        if (index == leaf->current_size_ && leaf->next_node_id_ != INVALID_PAGE_ID) {
-          index = 0;
-          leaf = PagePtr<LeafNode>{leaf->next_node_id_, &manager_}.get_ref();
-        }
       }
       return temp;
     }
