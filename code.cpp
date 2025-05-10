@@ -15,7 +15,7 @@ struct String64Hasher {
 
 struct IntHasher {
   RFlowey::hash_t operator()(const int& v) const {
-    return (std::hash<int>{}(v));
+    return static_cast<RFlowey::hash_t>(static_cast<long long>(v)-std::numeric_limits<int>::min());
   }
 };
 
