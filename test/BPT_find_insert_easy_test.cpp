@@ -1278,7 +1278,7 @@ void test_bpt_super_duped_and_comprehensive_mixed(const std::string& db_filename
 }
 
 int main() {
-    //freopen("test.log","w",stdout);
+    freopen("test.log","w",stdout);
 
     const std::string base_db_filename = "bpt_small";
 

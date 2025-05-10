@@ -176,6 +176,7 @@ namespace RFlowey {
           if(leaf->next_node_id_ != INVALID_PAGE_ID) {
             index = 0;
             leaf = PagePtr<LeafNode>{leaf->next_node_id_, &manager_}.get_ref();
+            continue;
           } else {
             break;
           }
