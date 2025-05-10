@@ -271,6 +271,7 @@ namespace RFlowey {
     public: // Add to public section of BPT
 
   void print_tree_structure() {
+#ifdef BPT_DEBUG_LOG
     std::cout << "\n====== B+Tree Structure ======" << std::endl;
     if (root_.page_id() == INVALID_PAGE_ID || root_.page_id() == 0) {
       std::cout << "Tree is empty or root is invalid." << std::endl;
@@ -280,6 +281,7 @@ namespace RFlowey {
     std::cout << "Root Page ID: " << root_.page_id() << std::endl;
     print_node_recursive(root_.page_id(), 0, true); // true for is_inner_node_root
     std::cout << "==============================\n" << std::endl;
+#endif
   }
 
 private: // Add to private section of BPT

@@ -13,6 +13,8 @@
 // Define BPT_TEST before including BPT.h to enable internal BPT assertions
 #define BPT_TEST
 
+//#define BPT_DEBUG_LOG
+
 #include "src/BPT.h"
 #include "src/utils/utils.h" // For RFlowey::string and RFlowey::hash
 
@@ -25,7 +27,7 @@ struct String64Hasher {
 
 struct IntHasher {
     RFlowey::hash_t operator()(const int& v) const {
-        return static_cast<RFlowey::hash_t>(std::hash<int>{}(v));
+        return static_cast<RFlowey::hash_t>(static_cast<long long>(v)-std::numeric_limits<int>::min());
     }
 };
 
