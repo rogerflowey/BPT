@@ -5,7 +5,6 @@
 #include "src/common.h"
 
 
-
 namespace RFlowey {
   class Page;
 

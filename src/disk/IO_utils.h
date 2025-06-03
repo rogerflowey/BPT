@@ -55,8 +55,8 @@ namespace RFlowey {
     std::shared_ptr<Page> page_;
     std::unique_ptr<T> t_ptr_;
     bool is_dirty = false;
-    bool is_valid = true;
   public:
+    bool is_valid = true;
     PageRef() = default;
     PageRef(std::shared_ptr<Page> page,std::unique_ptr<T>&& t_ptr):page_(std::move(page)),t_ptr_(std::move(t_ptr)){};
     PageRef(PageRef&& ref) noexcept :page_(std::move(ref.page_)),t_ptr_(std::move(ref.t_ptr_)) {

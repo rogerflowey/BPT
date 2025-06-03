@@ -201,5 +201,6 @@ constexpr bool operator>=(const pair<T1, T2>& lhs, const pair<T1, T2>& rhs) {
         }
         return hash;
     }
+    struct Nothing{};
 }
 #endif //UTILS_H

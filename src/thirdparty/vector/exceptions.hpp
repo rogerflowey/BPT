@@ -1,6 +1,4 @@
-#ifndef SJTU_EXCEPTIONS_HPP
-#define SJTU_EXCEPTIONS_HPP
-
+#pragma once
 #include <cstddef>
 #include <cstring>
 #include <string>
@@ -38,5 +36,3 @@ class container_is_empty : public exception {
     /* __________________________ */
 };
 }  // namespace sjtu
-
-#endif

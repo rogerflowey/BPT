@@ -4,6 +4,7 @@
 
 // Include the B+ Tree header
 #include "src/BPT.h"
+#include "src/database.h"
 
 #define BPT_TEST
 
@@ -23,6 +24,9 @@ struct IntHasher {
 bool TEST;
 
 int main() {
+  std::ios::sync_with_stdio(false);
+  std::cin.tie(nullptr);
+  std::cout.tie(nullptr);
   TEST = false;
   if (TEST) {
     // Make sure these files exist if TEST is true
@@ -32,7 +36,7 @@ int main() {
 
   std::string bpt_data_file = "No2697.dat";
   //std::remove(bpt_data_file.c_str());
-  RFlowey::BPT<RFlowey::string<64>, int,String64Hasher,IntHasher> bpt(bpt_data_file);
+  OrderedHashMap<RFlowey::string<64>,int,String64Hasher> bpt(bpt_data_file);
 
   int n;
   if (!(std::cin >> n)) {
