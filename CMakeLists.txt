@@ -12,6 +12,8 @@ add_executable(code
         src/disk/IO_utils.cpp
 )
 
+target_compile_options(code PRIVATE -O2)
+
 add_executable(node_test
         test/node_test.cpp
         src/disk/IO_manager.cpp

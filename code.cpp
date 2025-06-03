@@ -21,15 +21,13 @@ struct IntHasher {
 };
 
 
-bool TEST;
+bool TEST = false;
 
 int main() {
   std::ios::sync_with_stdio(false);
   std::cin.tie(nullptr);
   std::cout.tie(nullptr);
-  TEST = false;
   if (TEST) {
-    // Make sure these files exist if TEST is true
     freopen("test.in", "r", stdin);
     freopen("test.out", "w", stdout);
   }
